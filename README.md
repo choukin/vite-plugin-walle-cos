@@ -1,9 +1,9 @@
-# vite-plugin-ali-oss
+# vite-plugin-walle-cos
 
 ![license](https://img.shields.io/npm/l/vite-plugin-walle-cos)
-![downloads](https://img.shields.io/npm/dt/vite-plugin-walle-coss)
-![npm](https://img.shields.io/npm/v/vite-plugin-walle-coss)
-![stars](https://img.shields.io/github/stars/xiaweiss/vite-plugin-walle-coss)
+![downloads](https://img.shields.io/npm/dt/vite-plugin-walle-cos)
+![npm](https://img.shields.io/npm/v/vite-plugin-walle-cos)
+![stars](https://img.shields.io/github/stars/choukin/vite-plugin-walle-cos)
 
 ## 插件介绍
 
