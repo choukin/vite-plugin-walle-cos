@@ -8,11 +8,10 @@ import path from 'path'
 dotenv.config({path: path.resolve(process.cwd(), '.env.local')})
 
 const options = {
-  region: 'oss-cn-beijing',
-  accessKeyId: process.env.VITE_ACCESS_KEY_ID!, //  Note: Add your accessKeyId
-  accessKeySecret: process.env.VITE_ACCESS_KEY_SECRET!, // Note: Add your accessKeySecret
-  bucket: 'xiaweiss',
-  // overwrite: false,
+  region: 'ap-beijing',
+  SecretId: process.env.VITE_SECRET_ID!, //  Note: Add your SecretId
+  SecretKey: process.env.VITE_SECRET_KEY!, // Note: Add your SecretKey
+  bucket: 'pingtai-front-test-1313601664',
   // enabled: false,
   // test: true,
   // retry: 3
@@ -24,7 +23,8 @@ const prod = process.env.NODE_ENV === 'production'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: prod ? 'https://foo.com/base/' : '/', // same with webpack public path
+  // base: prod ? 'https://static-fe-test.ledupeiyou.com/path/2025test/' : '', // same with webpack public path
+  base: prod ? 'https://foo.com/base/' : '', // same with webpack public path
   plugins: [vue(), vitePluginAliOss(options)],
   resolve: {
     alias: {

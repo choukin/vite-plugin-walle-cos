@@ -1,142 +1,73 @@
-## <small>2.1.1 (2025-09-03)</small>
+## 1.0.0 (2025-11-04)
+
+* release: bump version ([040ab84](https://github.com/choukin/vite-plugin-walle-cos/commit/040ab84))
+* release: bump version ([9559159](https://github.com/choukin/vite-plugin-walle-cos/commit/9559159))
+* release: bump version ([9212419](https://github.com/choukin/vite-plugin-walle-cos/commit/9212419))
+* release: bump version ([32a8b8c](https://github.com/choukin/vite-plugin-walle-cos/commit/32a8b8c))
+* release: bump version ([c6eabe6](https://github.com/choukin/vite-plugin-walle-cos/commit/c6eabe6))
+* release: bump version ([b89cc41](https://github.com/choukin/vite-plugin-walle-cos/commit/b89cc41))
+* chore: migrate glob to tinyglobby ([fb90417](https://github.com/choukin/vite-plugin-walle-cos/commit/fb90417))
+* chore: update dependencies, ali-oss 6.22.0 ([f50b48e](https://github.com/choukin/vite-plugin-walle-cos/commit/f50b48e))
+* chore: update package ali-oss ([11b73ea](https://github.com/choukin/vite-plugin-walle-cos/commit/11b73ea))
+* chore: update package ali-oss ([b198de6](https://github.com/choukin/vite-plugin-walle-cos/commit/b198de6))
+* chore: update README, CHANGELOG ([ad65d70](https://github.com/choukin/vite-plugin-walle-cos/commit/ad65d70))
+* ci: update node version ([23b640f](https://github.com/choukin/vite-plugin-walle-cos/commit/23b640f))
+* feat: add retry option ([69ae091](https://github.com/choukin/vite-plugin-walle-cos/commit/69ae091))
+* feat: add vite 3 demo ([f58b73f](https://github.com/choukin/vite-plugin-walle-cos/commit/f58b73f))
+* feat: changelog ([161d1b2](https://github.com/choukin/vite-plugin-walle-cos/commit/161d1b2))
+* feat: Configure ESM as default，Deprecate CJS and node 16 ([0aab8f4](https://github.com/choukin/vite-plugin-walle-cos/commit/0aab8f4))
+* feat: support typescript ([d9d9f91](https://github.com/choukin/vite-plugin-walle-cos/commit/d9d9f91))
+* feat: support vite ssr mode ([d63198f](https://github.com/choukin/vite-plugin-walle-cos/commit/d63198f))
+* test: add vite-6 example ([6096839](https://github.com/choukin/vite-plugin-walle-cos/commit/6096839))
+* fix: add param enabled, add nomorepo ([c059594](https://github.com/choukin/vite-plugin-walle-cos/commit/c059594))
+* fix: add vite-4、5 example ([49937e0](https://github.com/choukin/vite-plugin-walle-cos/commit/49937e0))
+* fix: base path, update readme, add github workflow ([ff9ef9f](https://github.com/choukin/vite-plugin-walle-cos/commit/ff9ef9f))
+* fix: change ESmodule to CommonJS ([2905558](https://github.com/choukin/vite-plugin-walle-cos/commit/2905558))
+* fix: lock colors package version ([9d0d6e8](https://github.com/choukin/vite-plugin-walle-cos/commit/9d0d6e8))
+* fix: move devDependencies to dependencies ([668be99](https://github.com/choukin/vite-plugin-walle-cos/commit/668be99))
+* fix: normalize path ([debd77d](https://github.com/choukin/vite-plugin-walle-cos/commit/debd77d))
+* fix: peerDependencies version ([7d73126](https://github.com/choukin/vite-plugin-walle-cos/commit/7d73126))
+* fix: pnpm import colors/safe error ([1f00967](https://github.com/choukin/vite-plugin-walle-cos/commit/1f00967))
+* fix: update vite-3 example ([d6eb0da](https://github.com/choukin/vite-plugin-walle-cos/commit/d6eb0da))
+* fix: windows path ([c12ccee](https://github.com/choukin/vite-plugin-walle-cos/commit/c12ccee))
+* 0.0.4 ([11dba9a](https://github.com/choukin/vite-plugin-walle-cos/commit/11dba9a))
+* 0.0.4 add options, update readme ([5adf1b9](https://github.com/choukin/vite-plugin-walle-cos/commit/5adf1b9))
+* 0.0.5 ([58d5094](https://github.com/choukin/vite-plugin-walle-cos/commit/58d5094))
+* 0.0.6 ([54880d4](https://github.com/choukin/vite-plugin-walle-cos/commit/54880d4))
+* 0.0.7 ([58a001e](https://github.com/choukin/vite-plugin-walle-cos/commit/58a001e))
+* 1.0.0 ([ddf16af](https://github.com/choukin/vite-plugin-walle-cos/commit/ddf16af))
+* 1.0.0 ([9546692](https://github.com/choukin/vite-plugin-walle-cos/commit/9546692))
+* 1.0.1 ([82d8b80](https://github.com/choukin/vite-plugin-walle-cos/commit/82d8b80))
+* 1.0.2 ([2af47db](https://github.com/choukin/vite-plugin-walle-cos/commit/2af47db))
+* 1.0.3 ([f5e0f52](https://github.com/choukin/vite-plugin-walle-cos/commit/f5e0f52))
+* 1.0.4 ([e9c966d](https://github.com/choukin/vite-plugin-walle-cos/commit/e9c966d))
+* 1.0.5 ([9fb4196](https://github.com/choukin/vite-plugin-walle-cos/commit/9fb4196))
+* 1.0.7 ([38f7358](https://github.com/choukin/vite-plugin-walle-cos/commit/38f7358))
+* 1.0.8 ([dd90eda](https://github.com/choukin/vite-plugin-walle-cos/commit/dd90eda))
+* 1.0.9 ([d633708](https://github.com/choukin/vite-plugin-walle-cos/commit/d633708))
+* add .npmignore ([9d8e15a](https://github.com/choukin/vite-plugin-walle-cos/commit/9d8e15a))
+* add .npmignore ([3edaa89](https://github.com/choukin/vite-plugin-walle-cos/commit/3edaa89))
+* add init oss options、update README ([9abfb19](https://github.com/choukin/vite-plugin-walle-cos/commit/9abfb19))
+* add readme、fix log ([4bd849d](https://github.com/choukin/vite-plugin-walle-cos/commit/4bd849d))
+* change color lib ([1900958](https://github.com/choukin/vite-plugin-walle-cos/commit/1900958))
+* change color lib, replace `chalk` with `picocolors` ([8b6cb13](https://github.com/choukin/vite-plugin-walle-cos/commit/8b6cb13))
+* fix ignore option not working when empty string ([75cd559](https://github.com/choukin/vite-plugin-walle-cos/commit/75cd559))
+* Initial commit ([4750d4b](https://github.com/choukin/vite-plugin-walle-cos/commit/4750d4b))
+* no-git-checks ([1f9652f](https://github.com/choukin/vite-plugin-walle-cos/commit/1f9652f))
+* remove gpr publish ([02faaf2](https://github.com/choukin/vite-plugin-walle-cos/commit/02faaf2))
+* remove yarn.lock ([8202313](https://github.com/choukin/vite-plugin-walle-cos/commit/8202313))
+* update .npmignore ([785ff94](https://github.com/choukin/vite-plugin-walle-cos/commit/785ff94))
+* Update package.json ([e51b09a](https://github.com/choukin/vite-plugin-walle-cos/commit/e51b09a))
+* Update package.json ([f6d115a](https://github.com/choukin/vite-plugin-walle-cos/commit/f6d115a))
+* update readme ([1520a24](https://github.com/choukin/vite-plugin-walle-cos/commit/1520a24))
+* update README.md ([5fa0721](https://github.com/choukin/vite-plugin-walle-cos/commit/5fa0721))
+* Update README.md ([a90c1b6](https://github.com/choukin/vite-plugin-walle-cos/commit/a90c1b6))
+* update workflow ([53f804c](https://github.com/choukin/vite-plugin-walle-cos/commit/53f804c))
+* v0.0.1 ([6624f24](https://github.com/choukin/vite-plugin-walle-cos/commit/6624f24))
+* v0.0.2 package.json: add keywords ([f3c3f60](https://github.com/choukin/vite-plugin-walle-cos/commit/f3c3f60))
+* workflow to publish package ([c6c9645](https://github.com/choukin/vite-plugin-walle-cos/commit/c6c9645))
+* revert: preview ([7cc567f](https://github.com/choukin/vite-plugin-walle-cos/commit/7cc567f))
+* upgrade: ali-oss 6.17.1 ([ce75c67](https://github.com/choukin/vite-plugin-walle-cos/commit/ce75c67))
 
-* chore: update package ali-oss ([11b73ea](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/11b73ea))
-
-
-
-## 2.1.0 (2024-12-08)
-
-* feat: add retry option ([69ae091](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/69ae091))
-* chore: migrate glob to tinyglobby ([fb90417](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/fb90417))
-* chore: update dependencies, ali-oss 6.22.0 ([f50b48e](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/f50b48e))
-* test: add vite-6 example ([6096839](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/6096839))
-* ci: update node version ([23b640f](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/23b640f))
-
-
-
-## <small>2.0.2 (2024-02-20)</small>
-
-* chore: update package ali-oss ([b198de6](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/b198de6))
-
-
-
-## <small>2.0.1 (2024-01-02)</small>
-
-* fix: normalize path ([debd77d](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/debd77d)), closes ([#14](https://github.com/xiaweiss/vite-plugin-ali-oss/issues/14))
-
-
-## 2.0.0 (2023-12-25)
-
-* feat: Configure ESM as default，Deprecate CJS and node 16 ([0aab8f4](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/0aab8f4))
-* feat: support typescript ([d9d9f91](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/d9d9f91))
-
-
-
-## <small>1.0.10 (2023-12-04)</small>
-
-* fix: ignore option not working when empty string ([75cd559](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/75cd559))
-
-
-
-## <small>1.0.9 (2023-06-25)</small>
-
-* fix: update package.json, "conventional-changelog-cli" move to devDependencies ([e51b09a](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/e51b09a))
-
-
-
-## <small>1.0.8 (2022-08-27)</small>
-
-* feat: support vite ssr mode ([d63198f](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/d63198f))
-* chore: update README, CHANGELOG ([ad65d70](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/ad65d70))
-
-
-
-## <small>1.0.7 (2022-07-31)</small>
-
-* feat: add vite 3 demo ([f58b73f](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/f58b73f))
-* fix: peerDependencies version ([7d73126](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/7d73126))
-
-
-
-## <small>1.0.6 (2022-06-14)</small>
-
-* update README.md
-* change color lib, replace `chalk` with `picocolors` ([8b6cb13](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/8b6cb13))
-
-
-
-## <small>1.0.5 (2022-05-25)</small>
-
-* fix: windows path ([c12ccee](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/c12ccee))
-* change color lib ([1900958](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/1900958))
-
-
-
-## <small>1.0.4 (2022-02-15)</small>
-
-* upgrade: ali-oss 6.17.1 ([ce75c67](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/ce75c67))
-
-
-
-## <small>1.0.3 (2022-01-10)</small>
-
-* fix: lock colors package version ([9d0d6e8](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/9d0d6e8))
-
-
-
-## <small>1.0.2 (2021-12-14)</small>
-
-* fix: add param enabled, add nomorepo ([c059594](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/c059594))
-
-
-
-## <small>1.0.1 (2021-11-25)</small>
-
-* fix: change ESmodule to CommonJS ([2905558](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/2905558))
-
-
-
-## 1.0.0 (2021-11-24)
-release
-
-## <small>0.0.7 (2021-11-24)</small>
-
-* fix: base path, update readme, add github workflow ([ff9ef9f](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/ff9ef9f))
-
-
-
-## <small>0.0.6 (2021-11-24)</small>
-
-* fix: pnpm import colors/safe error ([1f00967](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/1f00967))
-
-
-
-## <small>0.0.5 (2021-11-24)</small>
-
-* fix: move devDependencies to dependencies ([668be99](https://github.com/xiaweiss/vite-plugin-ali-oss/commit/668be99))
-
-
-
-## <small>0.0.4 (2021-11-24)</small>
-
-* add options, update readme
-
-
-
-## <small>0.0.3 (2021-11-22)</small>
-
-* add .npmignore
-
-
-
-## <small>0.0.2 (2021-11-22)</small>
-
-* package.json: add keywords
-
-
-
-## <small>0.0.1 (2021-11-22)</small>
-
-* create project
 
 

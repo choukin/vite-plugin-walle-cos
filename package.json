@@ -1,38 +1,38 @@
 {
-	"name": "vite-plugin-ali-oss",
-	"version": "2.1.1",
-	"type": "module",
-	"author": "xiaweiss",
-	"description": "Upload the production files bundled in the project to Ali OSS, except for html",
-	"homepage": "https://github.com/xiaweiss/vite-plugin-ali-oss",
-	"repository": "https://github.com/xiaweiss/vite-plugin-ali-oss",
-	"license": "MIT",
-	"types": "index.d.ts",
-	"main": "index.js",
-	"keywords": [
-		"vite-plugin",
-		"ali-oss",
-		"aliyun"
-	],
-	"scripts": {
-		"example:build": "pnpm -C example build",
-		"changelog": "conventional-changelog -i CHANGELOG.md -s"
-	},
-	"dependencies": {
-		"ali-oss": "^6.23.0",
-		"picocolors": "^1.1.1",
-		"tinyglobby": "^0.2.14"
-	},
-	"devDependencies": {
-		"conventional-changelog-cli": "5.0.0"
-	},
-	"peerDependencies": {
-		"vite": "^6.0.0 || ^7.0.0"
-	},
-	"publishConfig": {
-		"@xiaweiss:registry": "https://npm.pkg.github.com"
-	},
-	"engines": {
-		"node": ">=18.0.0"
-	}
+  "name": "vite-plugin-walle-cos",
+  "version": "1.0.0",
+  "type": "module",
+  "author": "xiaweiss",
+  "description": "Upload the production files bundled in the project to Ali OSS, except for html",
+  "homepage": "https://github.com/choukin/vite-plugin-walle-cos",
+  "repository": "https://github.com/choukin/vite-plugin-walle-cos",
+  "license": "MIT",
+  "types": "index.d.ts",
+  "main": "index.js",
+  "keywords": [
+    "vite-plugin",
+    "walle-cos",
+    "tencent"
+  ],
+  "scripts": {
+    "example:build": "pnpm -C example build",
+    "changelog": "conventional-changelog -i CHANGELOG.md -s"
+  },
+  "dependencies": {
+    "cos-nodejs-sdk-v5": "2.15.4",
+    "picocolors": "^1.1.1",
+    "tinyglobby": "^0.2.14"
+  },
+  "devDependencies": {
+    "conventional-changelog-cli": "5.0.0"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0"
+  },
+  "publishConfig": {
+    "@xiaweiss:registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

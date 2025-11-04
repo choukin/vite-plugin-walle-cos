@@ -1,40 +1,32 @@
 import { Plugin } from 'vite'
+import {GetAuthorizationOptions, GetAuthorizationCallbackParams} from 'cos-nodejs-sdk-v5'
 
 interface Options {
-  /** ali cloud oss region */
+  /** tencent cloud cos region */
   region: string
-  /** ali cloud oss accessKeyId */
-  accessKeyId: string
-  /** ali cloud oss accessKeySecret */
-  accessKeySecret: string
-  /** ali cloud oss bucket */
+  /** tencent cloud cos SecretId */
+  SecretId: string
+  /** tencent cloud cos SecretKey */
+  SecretKey: string
+  /** tencent cloud cos bucket */
   bucket: string
-  /** If the file already exists, whether to skip upload. Default false */
-  overwrite?: boolean
   /** Ignore file rules. If you use empty string `''`, no files will be ignored. Default '\*\*\/\*.html' */
   ignore?: string[] | string
-  /** Request headers setting */
-  headers?: any
   /** Only test path, no files upload. Default false */
   test?: boolean
-  /** Enable the ali oss plugin. Default true */
+  /** 禁用本插件上传. Default true */
   enabled?: boolean
   /** Number of retries when upload (default 0) */
   retry?: number
-  /** The temporary Security Token Service (STS) token used to access OSS. */
-  stsToken?: string
-  /** The endpoint that is used to access your OSS bucket. */
-  endpoint?: string
-  /** Specifies whether to use the Alibaba Cloud internal network to access OSS. Default value: false. For example, set this parameter to true if you use an Elastic Compute Service (ECS) instance to access OSS. Access from an ECS instance uses an internal endpoint, which reduces costs */
-  internal?: boolean
-  /** Specifies whether a custom domain name can be used to access OSS. Default value: false. If you set cname to true, you must map a CNAME record to your bucket before you use the custom domain name to access the bucket. */
-  cname?: boolean
-  /** Specifies whether the pay-by-requester mode is enabled for your bucket. Default value: false. */
-  isRequestPay?: boolean
-  /** Specifies whether HTTPS is used to access OSS. A value of true indicates that HTTPS is used to access OSS. A value of false indicates that HTTP is used to access OSS. */
-  secure?: boolean
-  /** The timeout period. Default value: 60000. Unit: milliseconds. */
-  timeout?: string | number
+  /** 获取签名的回调方法，如果没有 SecretId、SecretKey 时，这个参数必选 */
+  getAuthorization?: (options: GetAuthorizationOptions,
+    /** callback 获取完签名或临时密钥后，回传给 SDK 的方法 */
+      callback: (
+        /** params 回传给 SDK 的签名或获取临时密钥 */
+        params: GetAuthorizationCallbackParams,
+      ) => void,) => void
+  /** 超时时间，单位毫秒，默认为0，即不设置超时时间 */
+  Timeout?: string | number
 }
 
 declare function vitePluginAliOss(options: Options): Plugin

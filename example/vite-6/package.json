@@ -22,7 +22,7 @@
     "npm-run-all2": "^7.0.1",
     "typescript": "5.6.3",
     "vite": "^6.0.1",
-    "vite-plugin-ali-oss": "workspace:*",
+    "vite-plugin-walle-cos": "workspace:*",
     "vue-tsc": "^2.1.10"
   }
 }
