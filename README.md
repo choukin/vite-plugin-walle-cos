@@ -74,8 +74,8 @@ pnpm run build
 |-----------------|---------------------------------------------------------|---------|---------------|
 | region          | Tencent COS 地域                                           | string  |               |
 | SecretId     | Tencent COS 访问 ID                                        | string  |               |
-| SecretKey | 阿里云 oss 访问密钥                                       | string  |               |
-| bucket          | 阿里云 oss 存储空间名称                                    | string  |               |
+| SecretKey | Tencent COS访问密钥                                       | string  |               |
+| bucket          | Tencent COS 存储空间名称                                    | string  |               |
 | ignore          | 文件忽略规则。如果你使用空字符串 `''`，将不会忽略任何文件 | boolean | `'**/*.html'` |
 | Timeout         | 超时时间，单位毫秒，默认为0，即不设置超时时间  | number  | 0             |
 | test            | 仅测试路径，不会有文件上传                                  | boolean | false         |

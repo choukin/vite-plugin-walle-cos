@@ -1,9 +1,9 @@
 {
   "name": "vite-plugin-walle-cos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "author": "xiaweiss",
-  "description": "Upload the production files bundled in the project to Ali OSS, except for html",
+  "description": "Upload the production files bundled in the project to Tencent COS, except for html",
   "homepage": "https://github.com/choukin/vite-plugin-walle-cos",
   "repository": "https://github.com/choukin/vite-plugin-walle-cos",
   "license": "MIT",

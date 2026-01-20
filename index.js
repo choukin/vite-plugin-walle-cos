@@ -3,9 +3,7 @@ import { globSync } from 'tinyglobby'
 import path from 'path'
 import COS from 'cos-nodejs-sdk-v5'
 import { URL } from 'node:url'
-// 引入 ./package.json 中的 name 字段
-import packageInfo from './package.json' with { type: 'json' }
-const packName = packageInfo.name
+const packName = 'vite-plugin-walle-cos'
 
 import { normalizePath } from 'vite'
 
