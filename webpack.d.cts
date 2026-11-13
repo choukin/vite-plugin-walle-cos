@@ -8,7 +8,7 @@ declare class WebpackPluginWalleCOS {
 
 declare namespace WebpackPluginWalleCOS {
   export interface WebpackOptions extends vitePluginWalleCOS.Options {
-    /** Override Webpack output.publicPath; must be a complete HTTP(S) URL. */
+    /** Override Webpack output.publicPath; accepts an HTTP(S) URL, a //-prefixed protocol-relative URL, or any path / relative prefix. */
     base?: string
     /** Override Webpack output.path. */
     outDir?: string

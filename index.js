@@ -1,27 +1,49 @@
 import color from 'picocolors'
 import { escapePath, globSync } from 'tinyglobby'
-import http from 'node:http'
-import https from 'node:https'
-import { stat } from 'node:fs/promises'
-import { createRequire } from 'node:module'
-import path from 'node:path'
-import { URL } from 'node:url'
+import http from 'http'
+import https from 'https'
+import fs from 'fs'
+import { createRequire } from 'module'
+import path from 'path'
+import { URL } from 'url'
 import COS from 'cos-nodejs-sdk-v5'
 
+const { stat } = fs.promises
 const packName = 'vite-plugin-walle-cos'
 let resolveSequentialCloseBundleSupport
 const DEFAULT_CREDENTIAL_TIMEOUT = 10000
 const DEFAULT_REFRESH_BEFORE_EXPIRES = 60
+const DEFAULT_STORAGE_CLASS = 'STANDARD'
+const BASE_URL_SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//
+const URL_SCHEME = /^([a-zA-Z][a-zA-Z0-9+.-]*):/
+// 这些 scheme 一定不是对象键前缀，即使冒号后带斜杠也要拒绝
+const RESERVED_SCHEMES = new Set([
+  'about',
+  'blob',
+  'data',
+  'file',
+  'ftp',
+  'ftps',
+  'http',
+  'https',
+  'javascript',
+  'mailto',
+  'ssh',
+  'tel',
+  'ws',
+  'wss'
+])
 const PLUGIN_OPTIONS = [
   'base',
   'bucket',
   'enabled',
-  'headers',
   'ignore',
   'outDir',
-  'overwrite',
   'region',
   'retry',
+  'secretId',
+  'secretKey',
+  'StorageClass',
   'temporaryCredentials',
   'test'
 ]
@@ -72,6 +94,27 @@ async function retry(fn, retries) {
 function normalizeRequestTimeout(value) {
   const timeout = Number(value)
   return Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_CREDENTIAL_TIMEOUT
+}
+
+function validateSliceSize(value) {
+  if (value !== undefined && (!Number.isSafeInteger(value) || value <= 0)) {
+    const received = typeof value === 'number' ? String(value) : typeof value
+    throw new Error(
+      `[${packName}] SliceSize must be a positive safe integer in bytes; received ${received}`
+    )
+  }
+}
+
+function decodeBasePath(pathname) {
+  try {
+    return decodeURIComponent(pathname)
+  } catch {
+    throw new Error(`[${packName}] base/publicPath contains invalid percent encoding`)
+  }
+}
+
+function encodeObjectKeyPath(objectKey) {
+  return objectKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
 }
 
 function appendSearchParams(url, params) {
@@ -272,6 +315,16 @@ function normalizeCredentialTimestamp(value, fieldName) {
   return seconds
 }
 
+function firstNonNullish(...values) {
+  for (const value of values) {
+    if (value !== null && value !== undefined) {
+      return value
+    }
+  }
+
+  return undefined
+}
+
 function normalizeCredentials(credentials) {
   if (!credentials || typeof credentials !== 'object') {
     throw new Error(`[${packName}] temporary credential response does not contain credential data`)
@@ -293,8 +346,14 @@ function normalizeCredentials(credentials) {
     throw new Error(`[${packName}] temporary credential response is incomplete`)
   }
 
-  result.StartTime = normalizeCredentialTimestamp(credentials.StartTime ?? credentials.startTime ?? now - 1, 'StartTime')
-  result.ExpiredTime = normalizeCredentialTimestamp(credentials.ExpiredTime ?? credentials.expiredTime, 'ExpiredTime')
+  result.StartTime = normalizeCredentialTimestamp(
+    firstNonNullish(credentials.StartTime, credentials.startTime, now - 1),
+    'StartTime'
+  )
+  result.ExpiredTime = normalizeCredentialTimestamp(
+    firstNonNullish(credentials.ExpiredTime, credentials.expiredTime),
+    'ExpiredTime'
+  )
 
   if (result.ExpiredTime <= now) {
     throw new Error(`[${packName}] temporary credential has expired`)
@@ -309,7 +368,7 @@ function normalizeCredentialEndpoint(endpoint) {
   const url = typeof endpoint === 'string' ? endpoint.trim() : ''
   if (!url) {
     throw new Error(
-      `[${packName}] temporary credential endpoint is required; configure temporaryCredentials.endpoint, or provide SecretId/SecretKey or getAuthorization`
+      `[${packName}] temporary credential endpoint is required; configure temporaryCredentials.endpoint, or provide Credentials, SecretId/SecretKey, or getAuthorization`
     )
   }
 
@@ -364,7 +423,7 @@ export async function requestTemporaryCredentials(options = {}) {
 export function createTemporaryCredentialProvider(options = {}) {
   const refreshBeforeExpires = Math.max(
     0,
-    Number(options.refreshBeforeExpires ?? DEFAULT_REFRESH_BEFORE_EXPIRES) || 0
+    Number(firstNonNullish(options.refreshBeforeExpires, DEFAULT_REFRESH_BEFORE_EXPIRES)) || 0
   )
   let cachedCredentials = null
   let credentialRequest = null
@@ -417,8 +476,36 @@ export function createTemporaryCredentialProvider(options = {}) {
 }
 
 function resolveTemporaryCredentialOptions(options) {
-  if (Boolean(options.SecretId) !== Boolean(options.SecretKey)) {
-    throw new Error(`[${packName}] SecretId and SecretKey must be provided together`)
+  const sdkCredentials = options.Credentials
+  let hasSdkCredentials = false
+  if (sdkCredentials !== undefined) {
+    if (!sdkCredentials || typeof sdkCredentials !== 'object' || Array.isArray(sdkCredentials)) {
+      throw new Error(`[${packName}] Credentials must be an object with secretId and secretKey`)
+    }
+
+    const hasSecretId = typeof sdkCredentials.secretId === 'string' && sdkCredentials.secretId.trim().length > 0
+    const hasSecretKey = typeof sdkCredentials.secretKey === 'string' && sdkCredentials.secretKey.trim().length > 0
+    if (!hasSecretId || !hasSecretKey) {
+      throw new Error(
+        `[${packName}] Credentials.secretId and Credentials.secretKey must be provided together as non-empty strings`
+      )
+    }
+    hasSdkCredentials = true
+  }
+
+  if (!hasSdkCredentials) {
+    const hasSecretId = options.SecretId !== undefined && options.SecretId !== null
+    const hasSecretKey = options.SecretKey !== undefined && options.SecretKey !== null
+
+    if (hasSecretId || hasSecretKey) {
+      const validSecretId = typeof options.SecretId === 'string' && options.SecretId.trim().length > 0
+      const validSecretKey = typeof options.SecretKey === 'string' && options.SecretKey.trim().length > 0
+      if (!validSecretId || !validSecretKey) {
+        throw new Error(
+          `[${packName}] SecretId and SecretKey must be provided together as non-empty strings`
+        )
+      }
+    }
   }
 
   if (options.temporaryCredentials === false) {
@@ -433,7 +520,7 @@ function resolveTemporaryCredentialOptions(options) {
     return {}
   }
 
-  if (!options.getAuthorization && (!options.SecretId || !options.SecretKey)) {
+  if (!options.getAuthorization && !options.SecretId && !hasSdkCredentials) {
     return {}
   }
 
@@ -448,10 +535,28 @@ function isCredentialAuthorizationError(error) {
 }
 
 function createCosClient(options, credentialErrorState = { current: null }) {
-  const cosOptions = { ...options }
-  PLUGIN_OPTIONS.forEach(key => delete cosOptions[key])
+  if (options.ForcePathStyle) {
+    throw new Error(`[${packName}] ForcePathStyle is not supported by cos-nodejs-sdk-v5`)
+  }
 
-  const temporaryCredentialOptions = resolveTemporaryCredentialOptions(options)
+  // 兼容小写的 secretId / secretKey 写法，大写字段优先
+  const normalizedOptions = {
+    ...options,
+    SecretId: firstNonNullish(options.SecretId, options.secretId),
+    SecretKey: firstNonNullish(options.SecretKey, options.secretKey)
+  }
+  const cosOptions = Object.fromEntries(
+    Object.entries(normalizedOptions)
+      .filter(
+        ([key, value]) => value !== undefined && key !== 'ForcePathStyle' && !PLUGIN_OPTIONS.includes(key)
+      )
+      .map(([key, value]) => [
+        key,
+        key === 'Credentials' && value && typeof value === 'object' ? { ...value } : value
+      ])
+  )
+
+  const temporaryCredentialOptions = resolveTemporaryCredentialOptions(normalizedOptions)
   if (temporaryCredentialOptions) {
     normalizeCredentialEndpoint(temporaryCredentialOptions.endpoint)
     const getTemporaryCredentials = createTemporaryCredentialProvider(temporaryCredentialOptions)
@@ -472,6 +577,7 @@ function createCosClient(options, credentialErrorState = { current: null }) {
     }
     delete cosOptions.SecretId
     delete cosOptions.SecretKey
+    delete cosOptions.Credentials
   }
 
   return new COS(cosOptions)
@@ -498,7 +604,7 @@ async function assertOutputDirectory(outDirPath) {
   try {
     details = await stat(outDirPath)
   } catch (error) {
-    if (error?.code === 'ENOENT') {
+    if (error !== null && error !== undefined && error.code === 'ENOENT') {
       throw new Error(`[${packName}] output directory does not exist: ${outDirPath}`)
     }
     throw error
@@ -544,7 +650,11 @@ async function findMissingUploadFiles(outDirPath, includeEntries) {
         missing.push(raw)
       }
     } catch (error) {
-      if (error?.code === 'ENOENT' || error?.code === 'ENOTDIR') {
+      if (
+        error !== null &&
+        error !== undefined &&
+        (error.code === 'ENOENT' || error.code === 'ENOTDIR')
+      ) {
         missing.push(raw)
       } else {
         throw error
@@ -584,21 +694,108 @@ async function resolveUploadFiles(outDirPath, includeEntries, options, ssrClient
   return globSync(includeEntries.map(entry => entry.pattern), globOptions)
 }
 
-function getUploadTarget(outDirPath, fileFullPath, cosBasePath, cosOrigin) {
+function createUploadTargetContext(cosBasePath, cosOrigin, publicBasePath) {
+  const basePath = cosBasePath.replace(/\/$/, '')
+  const publicBasePrefix = publicBasePath.replace(/\/$/, '')
+  const publicPathPrefix = publicBasePrefix.replace(/^\/+/, '')
+
+  return {
+    baseKey: basePath.replace(/^\/+/, ''),
+    cosOrigin,
+    publicPathBase: publicPathPrefix ? `/${publicPathPrefix}` : '',
+    hasEncodedTrailingSlash:
+      cosBasePath.endsWith('/') &&
+      /%2f$/i.test(publicBasePrefix) &&
+      !publicBasePath.endsWith('/')
+  }
+}
+
+function getUploadTarget(outDirPath, fileFullPath, targetContext) {
+  const { baseKey, cosOrigin, publicPathBase, hasEncodedTrailingSlash } = targetContext
   const relativePath = normalizePath(path.relative(outDirPath, fileFullPath))
-  const cosFilePath = `${cosBasePath.replace(/\/$/, '')}/${relativePath}`
-  const completePath = cosOrigin + cosFilePath
+  const cosFilePath = baseKey ? `${baseKey}/${relativePath}` : relativePath
+  // 纯路径形式的 base 没有域名，此时只打印对象键
+  const completePath = cosOrigin
+    ? `${cosOrigin}${publicPathBase}${hasEncodedTrailingSlash ? '' : '/'}` +
+      encodeObjectKeyPath(relativePath)
+    : cosFilePath
   const output = `${normalizePath(fileFullPath)} => ${color.green(completePath)}`
   return { cosFilePath, output }
+}
+
+function resolveBasePath(base) {
+  if (base === null || base === undefined || (typeof base === 'string' && base.trim() === '')) {
+    throw new Error(`[${packName}] base/publicPath is required`)
+  }
+  if (typeof base !== 'string') {
+    throw new Error(`[${packName}] base/publicPath must be a string`)
+  }
+
+  let value = base.trim()
+  // 协议相对地址（//host/path）沿用页面协议，这里按 https 补全，只影响日志中的访问地址；
+  // ///assets/ 这类地址没有 host，按纯路径处理
+  if (/^\/\/[^/]/.test(value)) {
+    value = `https:${value}`
+  }
+
+  if (BASE_URL_SCHEME.test(value)) {
+    let parsed
+    try {
+      parsed = new URL(value)
+    } catch (error) {
+      throw new Error(`[${packName}] base/publicPath is not a valid URL: ${value}`)
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`[${packName}] base/publicPath must be an http(s) URL: ${value}`)
+    }
+    return {
+      pathname: decodeBasePath(parsed.pathname),
+      publicPathname: parsed.pathname,
+      origin: parsed.origin
+    }
+  }
+
+  // 冒号前缀只有在“不是保留 scheme 且冒号后带路径斜杠”时才当作对象键前缀，
+  // 用于支持 release:v2/ 这类写法；https:cdn.example.com/a/ 这种畸形地址仍然拒绝
+  const schemeMatch = URL_SCHEME.exec(value)
+  if (schemeMatch) {
+    const scheme = schemeMatch[1].toLowerCase()
+    const schemeRemainder = value.slice(schemeMatch[0].length)
+    if (RESERVED_SCHEMES.has(scheme) || !schemeRemainder.includes('/')) {
+      throw new Error(`[${packName}] base/publicPath must be an http(s) URL: ${value}`)
+    }
+  }
+
+  // 相对前缀（如 correct-center）和 / 开头的路径都只作为 COS 对象键前缀，没有访问域名；
+  // 连续前导斜杠按单个斜杠处理，避免被 URL 解析当成 host
+  const parsed = new URL(`/${value.replace(/^\/+/, '')}`, 'https://base.invalid')
+  return {
+    pathname: decodeBasePath(parsed.pathname),
+    publicPathname: parsed.pathname,
+    origin: ''
+  }
+}
+
+// COS SDK 某些版本返回的 Location 不带协议（bucket-appid.cos.region.myqcloud.com/key），
+// 某些版本自带 https://；补全成可直接访问的 URL，已经带协议的保持原样
+function normalizeCosLocation(location) {
+  if (/^https?:\/\//i.test(location)) {
+    return location
+  }
+  if (/^\/\//.test(location)) {
+    return `https:${location}`
+  }
+  return `https://${location}`
 }
 
 async function uploadFileWithRetry({ client, credentialErrorState, params, retries, output }) {
   await retry(async () => {
     const attemptErrorState = { error: null, hasError: false }
     credentialErrorState.current = attemptErrorState
+    let result
 
     try {
-      await client.uploadFile(params)
+      result = await client.uploadFile(params)
     } catch (error) {
       if (attemptErrorState.hasError && isCredentialAuthorizationError(error)) {
         throw attemptErrorState.error
@@ -611,13 +808,18 @@ async function uploadFileWithRetry({ client, credentialErrorState, params, retri
     }
 
     console.log(`upload complete: ${output}`)
+    // COS 返回的 Location 来自 SDK 配置的域名，和 base 推出来的访问地址可能不同（例如走 CDN 时）；
+    // 分片上传的部分 SDK 版本不带 Location，所以只在实际返回时才打印
+    if (result && typeof result.Location === 'string' && result.Location) {
+      console.log(`cos location: ${normalizeCosLocation(result.Location)}`)
+    }
   }, retries)
 }
 
 async function uploadFilesToCOS(files, context) {
   for (const fileFullPath of files) {
-    const { outDirPath, cosBasePath, cosOrigin, options, client, credentialErrorState } = context
-    const { cosFilePath, output } = getUploadTarget(outDirPath, fileFullPath, cosBasePath, cosOrigin)
+    const { outDirPath, targetContext, options, client, credentialErrorState } = context
+    const { cosFilePath, output } = getUploadTarget(outDirPath, fileFullPath, targetContext)
     if (options.test) {
       console.log(`test upload path: ${output}`)
       continue
@@ -630,9 +832,8 @@ async function uploadFilesToCOS(files, context) {
         Bucket: options.bucket,
         Region: options.region,
         Key: cosFilePath,
-        StorageClass: 'STANDARD',
-        FilePath: fileFullPath,
-        SliceSize: 1024 * 1024 * 5
+        StorageClass: options.StorageClass || DEFAULT_STORAGE_CLASS,
+        FilePath: fileFullPath
       },
       retries: options.retry,
       output
@@ -644,20 +845,23 @@ export async function uploadToCOS({ outDir, files: includeFiles, base, ssrClient
   if (options.enabled === false) {
     return
   }
-  if (typeof base !== 'string' || !/^https?:\/\//i.test(base)) {
-    throw new Error(`[${packName}] base/publicPath must be an http(s) URL`)
-  }
   if (!options.bucket || !options.region) {
     throw new Error(`[${packName}] bucket and region are required`)
   }
+  validateSliceSize(options.SliceSize)
 
   const outDirPath = normalizePath(path.resolve(outDir || 'dist'))
-  const { pathname: cosBasePath, origin: cosOrigin } = new URL(base)
+  const { pathname: cosBasePath, publicPathname, origin: cosOrigin } = resolveBasePath(base)
   const includeEntries = getIncludeEntries(includeFiles)
   const files = await resolveUploadFiles(outDirPath, includeEntries, options, ssrClient, ssrServer)
+  if (files.length === 0) {
+    return
+  }
+
   const credentialErrorState = { current: null }
   // A test run only prints target paths, so it must not require usable credentials.
   const client = options.test ? null : createCosClient(options, credentialErrorState)
+  const targetContext = createUploadTargetContext(cosBasePath, cosOrigin, publicPathname)
 
   console.log('')
   console.log(`${packName} upload start${ssrClient ? ' (ssr client)' : ssrServer ? ' (ssr server)' : ''}`)
@@ -666,8 +870,7 @@ export async function uploadToCOS({ outDir, files: includeFiles, base, ssrClient
   const startTime = Date.now()
   await uploadFilesToCOS(files, {
     outDirPath,
-    cosBasePath,
-    cosOrigin,
+    targetContext,
     options,
     client,
     credentialErrorState
@@ -684,7 +887,25 @@ export default function vitePluginWalleCOS(options = {}) {
   let rootConfig = process.cwd()
   let buildConfig = {}
   let useSequentialCloseBundle = false
+  let watchSkipReported = false
   const closeBundle = async () => {
+    if (options.enabled === false) {
+      return
+    }
+    // Vite 2 - 5 把 `--watch` 解析为 `true`，Vite 6 及以后解析为配置对象，两者都是真值。
+    // watch 构建每轮重编译都会触发 closeBundle，逐轮上传既慢又容易把半成品传上去，因此整场跳过。
+    if (buildConfig.watch) {
+      if (!watchSkipReported) {
+        watchSkipReported = true
+        console.warn(`[${packName}] skipping COS upload: watch mode builds are not uploaded`)
+      }
+      return
+    }
+    if (buildConfig.write === false) {
+      console.warn(`[${packName}] skipping COS upload: build.write is false; output is not written to disk`)
+      return
+    }
+
     await uploadToCOS({
       outDir: path.resolve(rootConfig, buildConfig.outDir || 'dist'),
       base: baseConfig,

@@ -9,12 +9,12 @@ dotenv.config({path: path.resolve(process.cwd(), '.env.local')})
 
 const options = {
   region: 'ap-beijing',
-  bucket: 'pingtai-front-test-1313601664',
+  bucket: 'example-1234567890',
   temporaryCredentials: {
     endpoint: process.env.COS_CREDENTIAL_ENDPOINT,
     method: 'GET',
     params: {
-      channel: process.env.COS_CREDENTIAL_CHANNEL || 'pt-front-kind'
+      channel: process.env.COS_CREDENTIAL_CHANNEL || 'example-channel'
     }
   },
   // enabled: false,
@@ -28,7 +28,7 @@ const prod = process.env.NODE_ENV === 'production'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // base: prod ? 'https://static-fe-test.ledupeiyou.com/path/2025test/' : '', // same with webpack public path
+  // base: prod ? 'https://cdn.example.com/app/' : '', // same with webpack public path
   base: prod ? 'https://foo.com/base/' : '', // same with webpack public path
   plugins: [vue(), vitePluginWalleCOS(options)],
   resolve: {

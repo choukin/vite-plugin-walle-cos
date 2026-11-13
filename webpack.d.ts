@@ -1,7 +1,7 @@
 import type { Options as COSUploadOptions } from './index.js'
 
 export interface WebpackOptions extends COSUploadOptions {
-  /** 覆盖 Webpack output.publicPath，必须是完整 http(s) URL */
+  /** 覆盖 Webpack output.publicPath；完整 http(s) URL、// 协议相对地址，或任意路径 / 相对前缀 */
   base?: string
   /** 覆盖 Webpack output.path */
   outDir?: string

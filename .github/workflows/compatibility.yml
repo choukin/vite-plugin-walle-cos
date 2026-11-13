@@ -26,6 +26,30 @@ jobs:
       - run: pnpm test:unit
       - run: pnpm test:types
 
+  runtime-smoke:
+    name: Runtime smoke / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['12.22.0', '12.22.12', '13.2.0', '13.14.0', '14.0.0', '14.13.0']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # 切到旧版本后再执行冒烟测试；这一步不要加 cache: pnpm，
+      # 否则 setup-node 会用 pnpm 10 去算缓存路径，而 pnpm 10 自身跑不了 Node 12/13
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node test/compat/runtime.mjs
+
   vite:
     name: Vite ${{ matrix.vite }} / Node ${{ matrix.node }}
     runs-on: ubuntu-latest

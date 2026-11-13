@@ -22,9 +22,15 @@ function supportsSequentialCloseBundle(root) {
 function vitePluginWalleCOS(options = {}) {
   let resolvedConfig
   let useSequentialCloseBundle = false
+  let pluginPromise
+  const getPlugin = () => {
+    if (!pluginPromise) {
+      pluginPromise = import('./index.js').then(({ default: createVitePlugin }) => createVitePlugin(options))
+    }
+    return pluginPromise
+  }
   const runCloseBundle = async () => {
-    const { default: createVitePlugin } = await import('./index.js')
-    const plugin = createVitePlugin(options)
+    const plugin = await getPlugin()
     if (resolvedConfig) {
       plugin.configResolved(resolvedConfig)
     }

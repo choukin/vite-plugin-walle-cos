@@ -34,6 +34,20 @@ async function requestWithResponse(response) {
   })
 }
 
+async function uploadWithCOSOptions(outDir, options = {}, base = 'https://static.example.com/app/') {
+  return uploadToCOS({
+    outDir,
+    base,
+    options: {
+      bucket: 'test-1234567890',
+      region: 'ap-beijing',
+      SecretId: 'test-id',
+      SecretKey: 'test-key',
+      ...options
+    }
+  })
+}
+
 test('normalizes credential timestamps supplied in milliseconds', async () => {
   const now = Math.floor(Date.now() / 1000)
   const result = await requestWithResponse(credentials({
@@ -43,6 +57,18 @@ test('normalizes credential timestamps supplied in milliseconds', async () => {
 
   assert.equal(result.StartTime, now - 1)
   assert.equal(result.ExpiredTime, now + 3600)
+})
+
+test('does not treat a zero primary timestamp as a missing nullish value', async () => {
+  const now = Math.floor(Date.now() / 1000)
+
+  await assert.rejects(
+    requestWithResponse(credentials({
+      StartTime: 0,
+      startTime: now - 1
+    })),
+    /StartTime is invalid/
+  )
 })
 
 test('rejects a missing output directory for a full-directory upload', async () => {
@@ -58,6 +84,64 @@ test('rejects a missing output directory for a full-directory upload', async () 
       }),
       /output directory does not exist/
     )
+  } finally {
+    await rm(parentDir, { recursive: true, force: true })
+  }
+})
+
+test('skips COS client initialization for an empty directory', async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), 'walle-empty-output-'))
+  const originalLog = console.log
+  const logs = []
+  console.log = (...args) => logs.push(args.map(String).join(' '))
+
+  try {
+    await uploadToCOS({
+      outDir,
+      base: 'https://static.example.com/app/',
+      options: { bucket: 'test-1234567890', region: 'ap-beijing' }
+    })
+    assert.deepEqual(logs, [])
+  } finally {
+    console.log = originalLog
+    await rm(outDir, { recursive: true, force: true })
+  }
+})
+
+test('skips COS client initialization when SSR server assets are ignored', async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), 'walle-empty-ssr-server-'))
+  const originalLog = console.log
+  const logs = []
+  console.log = (...args) => logs.push(args.map(String).join(' '))
+
+  try {
+    await writeFile(path.join(outDir, 'server.js'), 'export default 1')
+    await uploadToCOS({
+      outDir,
+      base: 'https://static.example.com/app/',
+      ssrServer: true,
+      options: { bucket: 'test-1234567890', region: 'ap-beijing' }
+    })
+    assert.deepEqual(logs, [])
+  } finally {
+    console.log = originalLog
+    await rm(outDir, { recursive: true, force: true })
+  }
+})
+
+test('skips explicit empty uploads without credentials but keeps required-option validation', async () => {
+  const parentDir = await mkdtemp(path.join(tmpdir(), 'walle-empty-selected-'))
+  const outDir = path.join(parentDir, 'missing')
+  const upload = options => uploadToCOS({
+    outDir,
+    files: [],
+    base: 'https://static.example.com/app/',
+    options
+  })
+
+  try {
+    await upload({ bucket: 'test-1234567890', region: 'ap-beijing' })
+    await assert.rejects(upload({ bucket: '', region: 'ap-beijing' }), /bucket and region are required/)
   } finally {
     await rm(parentDir, { recursive: true, force: true })
   }
@@ -335,6 +419,7 @@ test('rejects incomplete permanent credentials before requesting temporary crede
   const outDir = await mkdtemp(path.join(tmpdir(), 'walle-partial-credentials-'))
 
   try {
+    await writeFile(path.join(outDir, 'asset.js'), 'export default 1')
     await assert.rejects(
       uploadToCOS({
         outDir,
@@ -346,6 +431,213 @@ test('rejects incomplete permanent credentials before requesting temporary crede
         }
       }),
       /SecretId and SecretKey must be provided together/
+    )
+  } finally {
+    await rm(outDir, { recursive: true, force: true })
+  }
+})
+
+test('passes COS slice thresholds to the client and defaults storage class per upload', async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), 'walle-upload-options-'))
+  const originalUploadFile = COS.prototype.uploadFile
+  const originalLog = console.log
+  const uploadCalls = []
+  const uploadLogs = []
+  console.log = (...args) => uploadLogs.push(args.map(String).join(' '))
+  COS.prototype.uploadFile = function captureUploadOptions(params) {
+    uploadCalls.push({
+      params,
+      sliceSize: this.options.SliceSize,
+      chunkSize: this.options.ChunkSize,
+      secretId: this.options.SecretId,
+      secretKey: this.options.SecretKey
+    })
+    return Promise.resolve()
+  }
+
+  try {
+    await writeFile(path.join(outDir, 'asset.js'), 'export default 1')
+    await uploadWithCOSOptions(outDir)
+    await uploadWithCOSOptions(outDir, { SliceSize: undefined, ChunkSize: undefined })
+    await uploadWithCOSOptions(outDir, { StorageClass: 'STANDARD_IA' })
+    await uploadWithCOSOptions(outDir, { StorageClass: '' })
+    await uploadWithCOSOptions(outDir, { SliceSize: 2 * 1024 * 1024 })
+    await uploadWithCOSOptions(outDir, {
+      StorageClass: 'STANDARD_IA',
+      SliceSize: 3 * 1024 * 1024,
+      ChunkSize: 4 * 1024 * 1024
+    })
+    const rawPrefixedStart = uploadLogs.length
+    await uploadWithCOSOptions(outDir, { UseRawKey: true })
+    const rawPrefixedLogs = uploadLogs.slice(rawPrefixedStart)
+    const rawRootStart = uploadLogs.length
+    await uploadWithCOSOptions(outDir, { UseRawKey: true }, 'https://static.example.com/')
+    const rawRootLogs = uploadLogs.slice(rawRootStart)
+    await uploadWithCOSOptions(outDir, {
+      SecretId: 'lower-priority-id',
+      SecretKey: undefined,
+      Credentials: { secretId: 'sdk-id', secretKey: 'sdk-key' }
+    })
+
+    assert.equal(uploadCalls[0].params.StorageClass, 'STANDARD')
+    assert.equal('SliceSize' in uploadCalls[0].params, false)
+    assert.equal(uploadCalls[0].sliceSize, 1024 * 1024)
+    assert.equal(uploadCalls[0].chunkSize, 1024 * 1024)
+
+    assert.equal(uploadCalls[1].sliceSize, 1024 * 1024)
+    assert.equal(uploadCalls[1].chunkSize, 1024 * 1024)
+    assert.equal('SliceSize' in uploadCalls[1].params, false)
+
+    assert.equal(uploadCalls[2].params.StorageClass, 'STANDARD_IA')
+    assert.equal('SliceSize' in uploadCalls[2].params, false)
+
+    assert.equal(uploadCalls[3].params.StorageClass, 'STANDARD')
+    assert.equal('SliceSize' in uploadCalls[3].params, false)
+
+    assert.equal(uploadCalls[4].params.StorageClass, 'STANDARD')
+    assert.equal('SliceSize' in uploadCalls[4].params, false)
+    assert.equal(uploadCalls[4].sliceSize, 2 * 1024 * 1024)
+
+    assert.equal(uploadCalls[5].params.StorageClass, 'STANDARD_IA')
+    assert.equal('SliceSize' in uploadCalls[5].params, false)
+    assert.equal(uploadCalls[5].sliceSize, 3 * 1024 * 1024)
+    assert.equal(uploadCalls[5].chunkSize, 4 * 1024 * 1024)
+
+    assert.equal(uploadCalls[0].params.Key, 'app/asset.js')
+    assert.equal(uploadCalls[6].params.Key, 'app/asset.js')
+    assert.ok(rawPrefixedLogs.some(line => line.includes('=> https://static.example.com/app/asset.js')))
+    assert.equal(uploadCalls[7].params.Key, 'asset.js')
+    assert.ok(rawRootLogs.some(line => line.includes('=> https://static.example.com/asset.js')))
+    assert.equal(uploadCalls[8].secretId, 'sdk-id')
+    assert.equal(uploadCalls[8].secretKey, 'sdk-key')
+
+    await assert.rejects(
+      uploadWithCOSOptions(outDir, {
+        SecretId: undefined,
+        SecretKey: undefined,
+        Credentials: { secretId: 'only-id' }
+      }),
+      /Credentials\.secretId and Credentials\.secretKey must be provided together/
+    )
+    await assert.rejects(
+      uploadWithCOSOptions(outDir, {
+        SecretId: undefined,
+        SecretKey: undefined,
+        Credentials: {}
+      }),
+      /Credentials\.secretId and Credentials\.secretKey must be provided together/
+    )
+    await assert.rejects(
+      uploadWithCOSOptions(outDir, {
+        Credentials: { secretId: 123, secretKey: 456 }
+      }),
+      /Credentials\.secretId and Credentials\.secretKey must be provided together/
+    )
+    await assert.rejects(
+      uploadWithCOSOptions(outDir, {
+        Credentials: { secretId: ' ', secretKey: '\t' }
+      }),
+      /Credentials\.secretId and Credentials\.secretKey must be provided together/
+    )
+
+    await assert.rejects(
+      uploadWithCOSOptions(outDir, { SliceSize: Number.NaN }),
+      /SliceSize must be a positive safe integer in bytes; received NaN/
+    )
+    await assert.rejects(
+      uploadWithCOSOptions(outDir, { ForcePathStyle: true }),
+      /ForcePathStyle is not supported by cos-nodejs-sdk-v5/
+    )
+  } finally {
+    COS.prototype.uploadFile = originalUploadFile
+    console.log = originalLog
+    await rm(outDir, { recursive: true, force: true })
+  }
+})
+
+test('does not mutate caller-provided COS credential objects', async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), 'walle-static-credentials-'))
+  const sharedCredentials = Object.freeze({ secretId: 'sdk-id', secretKey: 'sdk-key' })
+  const originalUploadFile = COS.prototype.uploadFile
+  COS.prototype.uploadFile = () => Promise.resolve()
+
+  try {
+    await writeFile(path.join(outDir, 'asset.js'), 'export default 1')
+    await uploadWithCOSOptions(outDir, { Credentials: sharedCredentials })
+    await uploadWithCOSOptions(outDir, { Credentials: sharedCredentials })
+  } finally {
+    COS.prototype.uploadFile = originalUploadFile
+    await rm(outDir, { recursive: true, force: true })
+  }
+})
+
+test('accepts lowercase secretId and secretKey aliases', async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), 'walle-lowercase-credentials-'))
+  const originalUploadFile = COS.prototype.uploadFile
+  const originalLog = console.log
+  const uploadCalls = []
+  console.log = () => {}
+  COS.prototype.uploadFile = function captureUploadOptions(params) {
+    uploadCalls.push({
+      key: params.Key,
+      secretId: this.options.SecretId,
+      secretKey: this.options.SecretKey,
+      forwardedLowercaseSecretId: 'secretId' in this.options
+    })
+    return Promise.resolve()
+  }
+
+  try {
+    await writeFile(path.join(outDir, 'asset.js'), 'export default 1')
+    await uploadToCOS({
+      outDir,
+      base: 'https://static.example.com/app/',
+      options: {
+        bucket: 'test-1234567890',
+        region: 'ap-beijing',
+        secretId: 'lowercase-id',
+        secretKey: 'lowercase-key'
+      }
+    })
+    await uploadToCOS({
+      outDir,
+      base: 'https://static.example.com/app/',
+      options: {
+        bucket: 'test-1234567890',
+        region: 'ap-beijing',
+        SecretId: 'uppercase-id',
+        SecretKey: 'uppercase-key',
+        secretId: 'lowercase-id',
+        secretKey: 'lowercase-key'
+      }
+    })
+
+    assert.equal(uploadCalls.length, 2)
+    assert.equal(uploadCalls[0].secretId, 'lowercase-id')
+    assert.equal(uploadCalls[0].secretKey, 'lowercase-key')
+    assert.equal(uploadCalls[0].forwardedLowercaseSecretId, false)
+    assert.equal(uploadCalls[1].secretId, 'uppercase-id')
+    assert.equal(uploadCalls[1].secretKey, 'uppercase-key')
+  } finally {
+    COS.prototype.uploadFile = originalUploadFile
+    console.log = originalLog
+    await rm(outDir, { recursive: true, force: true })
+  }
+})
+
+test('rejects non-string lowercase permanent credential aliases', async () => {
+  const outDir = await mkdtemp(path.join(tmpdir(), 'walle-invalid-lowercase-credentials-'))
+
+  try {
+    await writeFile(path.join(outDir, 'asset.js'), 'export default 1')
+    await assert.rejects(
+      uploadWithCOSOptions(outDir, {
+        SecretId: undefined,
+        SecretKey: undefined,
+        secretId: 123,
+        secretKey: 'lowercase-key'
+      }),
+      /SecretId and SecretKey must be provided together as non-empty strings/
     )
   } finally {
     await rm(outDir, { recursive: true, force: true })

@@ -7,6 +7,17 @@
   "homepage": "https://github.com/choukin/vite-plugin-walle-cos",
   "repository": "https://github.com/choukin/vite-plugin-walle-cos",
   "license": "MIT",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "index.d.cts",
+    "vite.cjs",
+    "webpack.cjs",
+    "webpack.d.ts",
+    "webpack.d.cts",
+    "rollup-hook.cjs",
+    "CHANGELOG.md"
+  ],
   "types": "index.d.ts",
   "main": "vite.cjs",
   "module": "index.js",
@@ -58,6 +69,7 @@
     "test:types": "pnpm -C example/vite-6 exec tsc --project ../../test/tsconfig.types.json",
     "test:compat:vite": "node test/compat/vite.mjs",
     "test:compat:webpack": "node test/compat/webpack.cjs",
+    "test:compat:runtime": "node test/compat/runtime.mjs",
     "changelog": "conventional-changelog -i CHANGELOG.md -s"
   },
   "dependencies": {
@@ -84,6 +96,6 @@
     "@xiaweiss:registry": "https://npm.pkg.github.com"
   },
   "engines": {
-    "node": ">=14.18.0"
+    "node": ">=12.22.0 <13 || >=13.2.0"
   }
 }

@@ -14,21 +14,28 @@ class WebpackPluginWalleCOS {
 
     let skipReported = false
     const upload = async compilation => {
-      const mode = compiler.options.mode || 'production'
-      if (compiler.watchMode || mode === 'development') {
+      // enabled 是唯一的上传开关：关闭时这里根本不会注册钩子，打开时除 watch 编译外一律上传。
+      // watch 编译会反复触发 afterEmit，逐次上传既慢又容易把半成品传上去，因此始终跳过。
+      if (compiler.watchMode) {
         if (!skipReported) {
           skipReported = true
-          console.log(
-            `[${pluginName}] skipping COS upload: ${compiler.watchMode ? 'watch mode' : 'development mode'} builds are not uploaded`
-          )
+          console.log(`[${pluginName}] skipping COS upload: watch mode builds are not uploaded`)
         }
         return
       }
 
       const outputOptions = compilation.outputOptions || compiler.options.output || {}
       const outDir = this.options.outDir || outputOptions.path
-      const base = this.options.base || outputOptions.publicPath
-      const files = Object.keys(compilation.assets || {})
+      const configuredBase =
+        this.options.base === null || this.options.base === undefined
+          ? outputOptions.publicPath
+          : this.options.base
+      const base = configuredBase === undefined || configuredBase === '' || configuredBase === 'auto'
+        ? '/'
+        : configuredBase
+      const files = typeof compilation.getAssets === 'function'
+        ? compilation.getAssets().map(asset => asset.name)
+        : Object.keys(compilation.assets || {})
       const { uploadToCOS } = await import('./index.js')
 
       await uploadToCOS({

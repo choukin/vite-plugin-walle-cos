@@ -7,7 +7,16 @@ const path = require('node:path')
 const test = require('node:test')
 const WebpackPluginWalleCOS = require('../webpack.cjs')
 
-async function runAfterEmit({ outDir, mode = 'production', watchMode = false, assets = {} }) {
+async function runAfterEmit({
+  outDir,
+  mode = 'production',
+  watchMode = false,
+  assets = {},
+  getAssets,
+  publicPath = 'https://static.example.com/app/',
+  omitPublicPath = false,
+  pluginOptions = {}
+}) {
   let afterEmit
   const compiler = {
     options: { mode, output: {} },
@@ -23,7 +32,8 @@ async function runAfterEmit({ outDir, mode = 'production', watchMode = false, as
   const plugin = new WebpackPluginWalleCOS({
     bucket: 'test-1234567890',
     region: 'ap-beijing',
-    test: true
+    test: true,
+    ...pluginOptions
   })
   const logs = []
   const originalLog = console.log
@@ -31,13 +41,11 @@ async function runAfterEmit({ outDir, mode = 'production', watchMode = false, as
 
   try {
     plugin.apply(compiler)
-    await afterEmit({
-      assets,
-      outputOptions: {
-        path: outDir,
-        publicPath: 'https://static.example.com/app/'
-      }
-    })
+    const outputOptions = { path: outDir }
+    if (!omitPublicPath) {
+      outputOptions.publicPath = publicPath
+    }
+    await afterEmit({ assets, outputOptions, ...(getAssets ? { getAssets } : {}) })
   } finally {
     console.log = originalLog
   }
@@ -63,9 +71,9 @@ async function withOutputDir(run) {
   }
 }
 
-test('does not upload development or watch compilations', async () => {
+test('uploads development compilations but still skips watch compilations', async () => {
   await withOutputDir(async outDir => {
-    await writeFile(path.join(outDir, 'stale.js'), 'stale')
+    await writeFile(path.join(outDir, 'dev.js'), 'dev')
 
     const developmentLogs = await runAfterEmit({
       outDir,
@@ -78,11 +86,35 @@ test('does not upload development or watch compilations', async () => {
       assets: { 'watch.js': {} }
     })
 
-    assert.deepEqual(uploadLines(developmentLogs), [])
+    assert.equal(uploadLines(developmentLogs).length, 1)
+    assert.match(uploadLines(developmentLogs)[0], /dev\.js/)
+    assert.deepEqual(skipLines(developmentLogs), [])
+
     assert.deepEqual(uploadLines(watchLogs), [])
-    assert.equal(skipLines(developmentLogs).length, 1)
     assert.equal(skipLines(watchLogs).length, 1)
+    assert.match(skipLines(watchLogs)[0], /watch mode/)
   })
+})
+
+test('registers no upload hook when enabled is false', async () => {
+  const registered = []
+  const plugin = new WebpackPluginWalleCOS({
+    bucket: 'test-1234567890',
+    region: 'ap-beijing',
+    enabled: false
+  })
+
+  plugin.apply({
+    options: { mode: 'production', output: {} },
+    hooks: {
+      afterEmit: {
+        tapPromise: () => registered.push('tapPromise'),
+        tapAsync: () => registered.push('tapAsync')
+      }
+    }
+  })
+
+  assert.deepEqual(registered, [])
 })
 
 test('uploads when the compilation is not a development build', async () => {
@@ -100,6 +132,54 @@ test('uploads when the compilation is not a development build', async () => {
   })
 })
 
+test('uses the root key prefix when Webpack publicPath is auto, empty, or missing', async () => {
+  await withOutputDir(async outDir => {
+    await writeFile(path.join(outDir, 'app.js'), 'app')
+
+    for (const options of [{ publicPath: 'auto' }, { publicPath: '' }, { omitPublicPath: true }]) {
+      const uploads = uploadLines(await runAfterEmit({
+        outDir,
+        assets: { 'app.js': {} },
+        ...options
+      }))
+
+      assert.equal(uploads.length, 1)
+      assert.match(uploads[0], /=> app\.js$/)
+    }
+  })
+})
+
+test('accepts a path-only publicPath as the object key prefix', async () => {
+  await withOutputDir(async outDir => {
+    await writeFile(path.join(outDir, 'app.js'), 'app')
+
+    const uploads = uploadLines(await runAfterEmit({
+      outDir,
+      assets: { 'app.js': {} },
+      publicPath: '/static/app/'
+    }))
+
+    assert.equal(uploads.length, 1)
+    assert.match(uploads[0], /=> static\/app\/app\.js$/)
+  })
+})
+
+test('preserves an explicit empty plugin base instead of falling back to publicPath', async () => {
+  await withOutputDir(async outDir => {
+    await writeFile(path.join(outDir, 'app.js'), 'app')
+
+    const uploads = uploadLines(await runAfterEmit({
+      outDir,
+      assets: { 'app.js': {} },
+      publicPath: 'https://cdn.example.com/ignored/',
+      pluginOptions: { base: '' }
+    }))
+
+    assert.equal(uploads.length, 1)
+    assert.match(uploads[0], /=> app\.js$/)
+  })
+})
+
 test('uploads only assets from the current compilation', async () => {
   await withOutputDir(async outDir => {
     await writeFile(path.join(outDir, 'current.js'), 'current')
@@ -113,6 +193,36 @@ test('uploads only assets from the current compilation', async () => {
     assert.equal(uploads.length, 1)
     assert.match(uploads[0], /current\.js/)
     assert.ok(!uploads.some(line => line.includes('stale.js')))
+  })
+})
+
+test('prefers compilation.getAssets when the Webpack 5 API is available', async () => {
+  await withOutputDir(async outDir => {
+    await writeFile(path.join(outDir, 'current.js'), 'current')
+    await writeFile(path.join(outDir, 'stale.js'), 'stale')
+
+    const uploads = uploadLines(await runAfterEmit({
+      outDir,
+      assets: { 'stale.js': {} },
+      getAssets: () => [{ name: 'current.js' }]
+    }))
+
+    assert.equal(uploads.length, 1)
+    assert.match(uploads[0], /current\.js/)
+    assert.ok(!uploads.some(line => line.includes('stale.js')))
+  })
+})
+
+test('skips COS client initialization for an empty Webpack compilation', async () => {
+  await withOutputDir(async outDir => {
+    const logs = await runAfterEmit({
+      outDir,
+      getAssets: () => [],
+      pluginOptions: { test: false }
+    })
+
+    assert.deepEqual(uploadLines(logs), [])
+    assert.ok(!logs.some(line => /upload start|upload complete/.test(line)))
   })
 })
 

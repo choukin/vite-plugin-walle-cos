@@ -1,8 +1,8 @@
 'use strict'
 
-const fs = require('node:fs')
-const path = require('node:path')
-const { createRequire } = require('node:module')
+const fs = require('fs')
+const path = require('path')
+const { createRequire } = require('module')
 
 const detectedRoots = new Map()
 

@@ -47,6 +47,46 @@ test('CommonJS Vite plugin uses the shared ESM build lifecycle', async () => {
   }
 })
 
+test('CommonJS Vite watch build reports its skip only once across rebuilds', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'walle-cjs-vite-watch-'))
+  const outDir = path.join(root, 'dist')
+  const originalLog = console.log
+  const originalWarn = console.warn
+  const logs = []
+  const warnings = []
+  console.log = (...args) => logs.push(args.map(String).join(' '))
+  console.warn = (...args) => warnings.push(args.map(String).join(' '))
+
+  try {
+    await mkdir(outDir)
+    await writeFile(path.join(outDir, 'asset.js'), 'export default 1')
+    const plugin = vitePluginWalleCOS({
+      bucket: 'test-1234567890',
+      region: 'ap-beijing',
+      test: true
+    })
+    plugin.configResolved({
+      root,
+      base: 'https://static.example.com/app/',
+      build: { outDir: 'dist', watch: true }
+    })
+
+    await plugin.closeBundle()
+    await plugin.closeBundle()
+
+    assert.equal(
+      warnings.filter(line => line.includes('watch mode builds are not uploaded')).length,
+      1,
+      'watch skip warning should only be reported once across rebuilds'
+    )
+    assert.equal(logs.some(line => line.includes('asset.js')), false, 'watch builds must not upload assets')
+  } finally {
+    console.log = originalLog
+    console.warn = originalWarn
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('CommonJS Vite entry uses sequential closeBundle hooks with Rollup 3+', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'walle-cjs-rollup-'))
   const viteDir = path.join(root, 'node_modules', 'vite')
