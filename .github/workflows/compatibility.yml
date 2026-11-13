@@ -1,0 +1,118 @@
+name: Compatibility
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Unit and type checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:unit
+      - run: pnpm test:types
+
+  runtime-smoke:
+    name: Runtime smoke / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['12.22.0', '12.22.12', '13.2.0', '13.14.0', '14.0.0', '14.13.0']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # 切到旧版本后再执行冒烟测试；这一步不要加 cache: pnpm，
+      # 否则 setup-node 会用 pnpm 10 去算缓存路径，而 pnpm 10 自身跑不了 Node 12/13
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node test/compat/runtime.mjs
+
+  vite:
+    name: Vite ${{ matrix.vite }} / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - vite: '2'
+            node: 18
+          - vite: '3'
+            node: 18
+          - vite: '4'
+            node: 18
+          - vite: '5'
+            node: 18
+          - vite: '6'
+            node: 18
+          - vite: '7'
+            node: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Vite ${{ matrix.vite }}
+        run: npm install --prefix "$RUNNER_TEMP/vite-${{ matrix.vite }}" --no-package-lock --no-save "vite@${{ matrix.vite }}"
+      - run: pnpm test:compat:vite
+        env:
+          COMPAT_PREFIX: ${{ runner.temp }}/vite-${{ matrix.vite }}
+          COMPAT_VERSION: ${{ matrix.vite }}
+
+  webpack:
+    name: Webpack ${{ matrix.webpack }} / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - webpack: '4'
+            node: 18
+            node_options: --openssl-legacy-provider
+          - webpack: '5'
+            node: 20
+            node_options: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Webpack ${{ matrix.webpack }}
+        run: npm install --prefix "$RUNNER_TEMP/webpack-${{ matrix.webpack }}" --no-package-lock --no-save "webpack@${{ matrix.webpack }}"
+      - run: pnpm test:compat:webpack
+        env:
+          COMPAT_PREFIX: ${{ runner.temp }}/webpack-${{ matrix.webpack }}
+          COMPAT_VERSION: ${{ matrix.webpack }}
+          NODE_OPTIONS: ${{ matrix.node_options }}

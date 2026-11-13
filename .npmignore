@@ -1,3 +1,8 @@
 .github
 /example
 /node_modules
+/test
+/package-lock.json
+/.ccb
+/.claude
+/pnpm-workspace.yaml

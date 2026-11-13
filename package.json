@@ -3,19 +3,73 @@
   "version": "1.0.1",
   "type": "module",
   "author": "xiaweiss",
-  "description": "Upload the production files bundled in the project to Tencent COS, except for html",
+  "description": "Upload Vite or Webpack production assets to Tencent COS",
   "homepage": "https://github.com/choukin/vite-plugin-walle-cos",
   "repository": "https://github.com/choukin/vite-plugin-walle-cos",
   "license": "MIT",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "index.d.cts",
+    "vite.cjs",
+    "webpack.cjs",
+    "webpack.d.ts",
+    "webpack.d.cts",
+    "rollup-hook.cjs",
+    "CHANGELOG.md"
+  ],
   "types": "index.d.ts",
-  "main": "index.js",
+  "main": "vite.cjs",
+  "module": "index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      },
+      "require": {
+        "types": "./index.d.cts",
+        "default": "./vite.cjs"
+      },
+      "default": "./index.js"
+    },
+    "./vite": {
+      "import": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      },
+      "require": {
+        "types": "./index.d.cts",
+        "default": "./vite.cjs"
+      },
+      "default": "./index.js"
+    },
+    "./webpack": {
+      "import": {
+        "types": "./webpack.d.ts",
+        "default": "./webpack.cjs"
+      },
+      "require": {
+        "types": "./webpack.d.cts",
+        "default": "./webpack.cjs"
+      },
+      "default": "./webpack.cjs"
+    },
+    "./package.json": "./package.json"
+  },
   "keywords": [
     "vite-plugin",
+    "webpack-plugin",
     "walle-cos",
     "tencent"
   ],
   "scripts": {
-    "example:build": "pnpm -C example build",
+    "example:build": "pnpm -C example/vite-6 build",
+    "test:unit": "node --test test/credentials.test.mjs test/vite-plugin.test.mjs test/webpack-plugin.test.cjs test/package-exports.test.cjs",
+    "test:types": "pnpm -C example/vite-6 exec tsc --project ../../test/tsconfig.types.json",
+    "test:compat:vite": "node test/compat/vite.mjs",
+    "test:compat:webpack": "node test/compat/webpack.cjs",
+    "test:compat:runtime": "node test/compat/runtime.mjs",
     "changelog": "conventional-changelog -i CHANGELOG.md -s"
   },
   "dependencies": {
@@ -27,12 +81,21 @@
     "conventional-changelog-cli": "5.0.0"
   },
   "peerDependencies": {
-    "vite": "^6.0.0 || ^7.0.0"
+    "vite": ">=2.0.0",
+    "webpack": "^4.0.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "@xiaweiss:registry": "https://npm.pkg.github.com"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=12.22.0 <13 || >=13.2.0"
   }
 }
