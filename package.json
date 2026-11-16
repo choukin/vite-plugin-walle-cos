@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-walle-cos",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "author": "xiaweiss",
   "description": "Upload Vite or Webpack production assets to Tencent COS",
@@ -93,7 +93,8 @@
     }
   },
   "publishConfig": {
-    "@xiaweiss:registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "engines": {
     "node": ">=12.22.0 <13 || >=13.2.0"
